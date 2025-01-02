@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Young;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
 
 class YoungController extends Controller
 {
@@ -22,12 +23,17 @@ class YoungController extends Controller
         ]);
     }
 
+    
+
     /**
      * Ajoute un nouveau jeune.
      */
-    public function store(Request $request): JsonResponse
+    
+
+public function store(Request $request): JsonResponse
     {
         try {
+            // Validation initiale sans les documents
             $validatedData = $request->validate([
                 'first_name' => 'required|string|max:255',
                 'last_name' => 'required|string|max:255',
@@ -37,28 +43,55 @@ class YoungController extends Controller
                 'phone' => 'required|string|max:15',
                 'email' => 'required|email|unique:youngs,email',
                 'address' => 'required|array',
-                'documents' => 'nullable|array',
-                // 'admin_id' => 'required|exists:admins,id',
+                'address.region' => 'required|string|max:255',
+                'address.department' => 'required|string|max:255',
+                'address.commune' => 'required|string|max:255',
+                'address.quartier' => 'required|string|max:255',
             ]);
+
+            // Traitement des fichiers
+            $documents = [];
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $file) {
+                    $fileName = time() . '_' . $file->getClientOriginalName();
+                    // Stocker directement dans le dossier public/documents
+                    $path = $file->storeAs('documents', $fileName, 'public');
+                    if ($path) {
+                        $documents[] = $path;
+                    }
+                }
+            }
+
+            // Préparation des données pour la création
+            $youngData = $validatedData;
+            $youngData['documents'] = $documents;
+
+            // Création de l'enregistrement
+            $young = Young::create($youngData);
+
+            return response()->json([
+                'message' => 'Jeune ajouté avec succès',
+                'data' => $young,
+            ], 201);
+
         } catch (\Throwable $th) {
-            throw $th;
+            Log::error('Erreur lors de l\'ajout:', [
+                'message' => $th->getMessage(),
+                'trace' => $th->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors de l\'ajout',
+                'errors' => $th->getMessage(),
+            ], 422);
         }
-       
-
-        $young = Young::create($validatedData);
-
-        return response()->json([
-            'message' => 'Jeune ajouté avec succès',
-            'data' => $young
-        ], 201);
     }
-
     /**
      * Met à jour les informations d'un jeune existant.
      */
     public function update(Request $request, $id): JsonResponse
     {
-        $young = Young::find($id);
+        $young = YouSearchng::find($id);
 
         if (!$young) {
             return response()->json(['message' => 'Jeune non trouvé'], 404);
@@ -73,7 +106,7 @@ class YoungController extends Controller
             'phone' => 'sometimes|string|max:15',
             'email' => 'sometimes|email|unique:youngs,email,' . $young->id,
             'address' => 'sometimes|array',
-            'documents' => 'nullable|array',
+            'documents' => 'array',
             'admin_id' => 'sometimes|exists:admins,id',
         ]);
 
