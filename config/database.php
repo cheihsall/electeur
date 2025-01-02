@@ -36,7 +36,10 @@ return [
       'dsn' => env('DB_URI', 'mongodb+srv://serignefallouniang776:wkGvYzQCZikmBEn0@election.bqpaw.mongodb.net/?retryWrites=true&w=majority&appName=election'),
 
           // 'dsn' => env('DB_URI', 'mongodb://localhost:27017'),
-        'database' => 'election'
+        'database' => 'election',
+        'options' => [
+            'database' => env('MONGODB_AUTHENTICATION_DATABASE', 'admin'),
+        ],
         ],
 
         'sqlite' => [
