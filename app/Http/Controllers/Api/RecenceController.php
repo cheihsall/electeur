@@ -44,29 +44,50 @@ class RecenceController extends Controller
         ]);
     }
 
+
     public function login(Request $request)
-    {
+{
+    try {
         $request->validate([
             "email" => "required|email",
-            "password" => "required",
+            "password" => "required|min:6",
         ]);
 
-        $credentials = $request->only("email", "password");
+        $credentials = $request->only(["email", "password"]);
         
         if (!$token = Auth::attempt($credentials)) {
             return response()->json([
                 "status" => false,
-                "message" => "Invalid login details",
+                "message" => "Email ou mot de passe incorrect"
             ], 401);
         }
 
+        $user = Auth::user();
+        
         return response()->json([
             "status" => true,
-            "message" => "User logged in successfully",
+            "message" => "Connexion réussie",
             "token" => $token,
-            "user" => Auth::user()
+            "user" => [
+                'id' => $user->id,
+                'nom' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]
         ]);
+
+    } catch (ValidationException $e) {
+        return response()->json([
+            "status" => false,
+            "message" => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            "status" => false,
+            "message" => "Une erreur est survenue",
+        ], 500);
     }
+}
 
     public function refreshToken()
     {
